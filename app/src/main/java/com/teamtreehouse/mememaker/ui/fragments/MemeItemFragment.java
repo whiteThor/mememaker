@@ -88,6 +88,9 @@ public class MemeItemFragment extends ListFragment {
     public void onResume() {
         super.onResume();
         MemeDataSource memeDataSource = new MemeDataSource(this.getActivity());
+        ArrayList<Meme> memes = memeDataSource.read();
+        setListAdapter(new MemeItemListAdapter(getActivity() ,memes));
+
     }
 
     @Override

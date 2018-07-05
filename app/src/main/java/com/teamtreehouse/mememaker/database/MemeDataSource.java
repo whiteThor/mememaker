@@ -33,6 +33,11 @@ public class MemeDataSource {
         sqLiteDatabase.close();
     }
 
+    public ArrayList<Meme> read(){
+        ArrayList<Meme> memes = readMemes();
+        addMemeAnnotations(memes);
+        return memes;
+    }
     public ArrayList<Meme> readMemes(){
         SQLiteDatabase database = open();
 
@@ -61,6 +66,56 @@ public class MemeDataSource {
         return memes;
     }
 
+    public void  addMemeAnnotations(ArrayList<Meme> memes){
+        SQLiteDatabase database = open();
+
+        for (Meme meme : memes) {
+                ArrayList<MemeAnnotation> memeAnnotations = new ArrayList<MemeAnnotation>();
+                Cursor cursor = database.rawQuery("SELECT * FROM " + MemeSQLiteHelper.ANNOTATIONS_TABLE + " WHERE MEME_ID = " + meme.getId(),null);
+                if(cursor.moveToFirst()){
+                    do {
+                        MemeAnnotation memeAnnotation = new MemeAnnotation(
+                                getIntFromColumnName(cursor, BaseColumns._ID),
+                                getStringFromColumnName(cursor, MemeSQLiteHelper.COLUMN_ANNOTATION_COLOR),
+                                getStringFromColumnName(cursor, MemeSQLiteHelper.COLUMN_ANNOTATION_TITLE),
+                                getIntFromColumnName(cursor, MemeSQLiteHelper.COLUMN_ANNOTATION_X),
+                                getIntFromColumnName(cursor, MemeSQLiteHelper.COLUMN_ANNOTATION_Y));
+                        memeAnnotations.add(memeAnnotation);
+
+                    }while(cursor.moveToNext());
+                }
+                meme.setAnnotations(memeAnnotations);
+                cursor.close();
+        }
+        database.close();
+    }
+
+    public void update(Meme meme){
+        SQLiteDatabase database = open();
+        database.beginTransaction();
+        ContentValues updateValue = new ContentValues();
+        updateValue.put(MemeSQLiteHelper.COLUMN_MEME_NAME, meme.getName());
+        database.update(MemeSQLiteHelper.MEMES_TABLE, updateValue, String.format("%s=%d", BaseColumns._ID, meme.getId()),null);
+
+        for(MemeAnnotation memeAnnotation : meme.getAnnotations()){
+            ContentValues updateAnnotations = new ContentValues();
+            updateAnnotations.put(MemeSQLiteHelper.COLUMN_ANNOTATION_TITLE, memeAnnotation.getTitle());
+            updateAnnotations.put(MemeSQLiteHelper.COLUMN_ANNOTATION_X, memeAnnotation.getLocationX());
+            updateAnnotations.put(MemeSQLiteHelper.COLUMN_ANNOTATION_Y, memeAnnotation.getLocationY());
+            updateAnnotations.put(MemeSQLiteHelper.COLUMN_FOREIGN_KEY_MEME, meme.getId());
+            updateAnnotations.put(MemeSQLiteHelper.COLUMN_ANNOTATION_COLOR, memeAnnotation.getColor());
+
+            if(memeAnnotation.hasBeenSaved()){
+                database.update(MemeSQLiteHelper.ANNOTATIONS_TABLE,updateAnnotations, String.format("%s=%d", BaseColumns._ID, memeAnnotation.getId()),null);
+            }else{
+                database.insert(MemeSQLiteHelper.ANNOTATIONS_TABLE,null,updateAnnotations);
+            }
+        }
+
+        database.setTransactionSuccessful();
+        close(database);
+
+    }
     private int getIntFromColumnName(Cursor cursor, String columnName){
         int columnIndex = cursor.getColumnIndex(columnName);
         return  cursor.getInt(columnIndex);
