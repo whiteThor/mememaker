@@ -33,6 +33,21 @@ public class MemeDataSource {
         sqLiteDatabase.close();
     }
 
+    public void delete(int memeId){
+        SQLiteDatabase database = open();
+        database.beginTransaction();
+
+        database.delete(MemeSQLiteHelper.ANNOTATIONS_TABLE,String.format("%s=%s", MemeSQLiteHelper.COLUMN_FOREIGN_KEY_MEME, String.valueOf(memeId)),null);
+
+        database.delete(MemeSQLiteHelper.MEMES_TABLE, String.format("%s=%s", BaseColumns._ID,String.valueOf(memeId)), null);
+
+        database.setTransactionSuccessful();
+        database.endTransaction();
+
+        close(database);
+
+    }
+
     public ArrayList<Meme> read(){
         ArrayList<Meme> memes = readMemes();
         addMemeAnnotations(memes);
